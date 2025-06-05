@@ -7,6 +7,8 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "course")
+@EqualsAndHashCode(exclude = "course")
 public class Student {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

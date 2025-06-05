@@ -5,6 +5,7 @@ package lk.chamasha.test.cases.service;
 
 import lk.chamasha.test.cases.controller.request.DepartmentRequest;
 import lk.chamasha.test.cases.controller.response.DepartmentResponse;
+import lk.chamasha.test.cases.exception.DepartmentNotFoundException;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ public interface DepartmentService {
 
     List<DepartmentResponse> getAllDepartments();
 
-    DepartmentResponse getDepartmentById(Long id);
+    DepartmentResponse getDepartmentById(Long id)throws DepartmentNotFoundException;
 
-    void deleteDepartment(Long id);
+    void deleteDepartment(Long id)throws DepartmentNotFoundException;
 }

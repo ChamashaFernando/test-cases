@@ -1,5 +1,6 @@
 package lk.chamasha.test.cases.service.impl;
 
+import jakarta.transaction.Transactional;
 import lk.chamasha.test.cases.controller.request.StudentRequest;
 import lk.chamasha.test.cases.controller.response.StudentResponse;
 import lk.chamasha.test.cases.model.Course;
@@ -34,6 +35,7 @@ public class StudentServiceImpl implements StudentService {
         return new StudentResponse(saved.getId(), saved.getStudentName(), course.getCourseName());
     }
 
+    @Transactional
     @Override
     public List<StudentResponse> getAllStudents() {
         return studentRepository.findAll().stream()

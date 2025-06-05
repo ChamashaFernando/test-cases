@@ -3,6 +3,7 @@ package lk.chamasha.test.cases.controller;
 
 import lk.chamasha.test.cases.controller.request.DepartmentRequest;
 import lk.chamasha.test.cases.controller.response.DepartmentResponse;
+import lk.chamasha.test.cases.exception.DepartmentNotFoundException;
 import lk.chamasha.test.cases.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,13 +29,17 @@ public class DepartmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DepartmentResponse> getDepartmentById(@PathVariable Long id) {
+    public ResponseEntity<DepartmentResponse> getDepartmentById(@PathVariable Long id)throws DepartmentNotFoundException {
         return ResponseEntity.ok(departmentService.getDepartmentById(id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
-        departmentService.deleteDepartment(id);
+    public ResponseEntity<Void> deleteDepartment(@PathVariable Long id)throws DepartmentNotFoundException{
+        try {
+            departmentService.deleteDepartment(id);
+        } catch (lk.chamasha.test.cases.exception.DepartmentNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         return ResponseEntity.noContent().build();
     }
 }

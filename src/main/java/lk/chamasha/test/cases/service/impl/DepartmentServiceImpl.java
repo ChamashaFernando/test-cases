@@ -3,6 +3,7 @@ package lk.chamasha.test.cases.service.impl;
 
 import lk.chamasha.test.cases.controller.request.DepartmentRequest;
 import lk.chamasha.test.cases.controller.response.DepartmentResponse;
+import lk.chamasha.test.cases.exception.DepartmentNotFoundException;
 import lk.chamasha.test.cases.model.Department;
 import lk.chamasha.test.cases.repository.DepartmentRepository;
 import lk.chamasha.test.cases.service.DepartmentService;
@@ -35,16 +36,16 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    public DepartmentResponse getDepartmentById(Long id) {
+    public DepartmentResponse getDepartmentById(Long id)throws DepartmentNotFoundException {
         Department dept = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
+                .orElseThrow(() -> new DepartmentNotFoundException("Department not found with id: " + id));
         return new DepartmentResponse(dept.getId(), dept.getDepartmentName());
     }
 
     @Override
-    public void deleteDepartment(Long id) {
+    public void deleteDepartment(Long id) throws DepartmentNotFoundException {
         if (!departmentRepository.existsById(id)) {
-            throw new RuntimeException("Department not found with id: " + id);
+            throw new DepartmentNotFoundException("Department not found with id: " + id);
         }
         departmentRepository.deleteById(id);
     }
