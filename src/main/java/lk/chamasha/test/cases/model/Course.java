@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lk.chamasha.test.cases.model.Department;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -20,4 +23,8 @@ public class Course {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Student> students = new HashSet<>();
+
 }
