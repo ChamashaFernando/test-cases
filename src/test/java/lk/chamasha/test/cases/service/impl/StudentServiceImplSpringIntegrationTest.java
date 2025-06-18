@@ -3,131 +3,146 @@ package lk.chamasha.test.cases.service.impl;
 import lk.chamasha.test.cases.controller.request.StudentRequest;
 import lk.chamasha.test.cases.controller.response.StudentResponse;
 import lk.chamasha.test.cases.model.Course;
+import lk.chamasha.test.cases.model.Student;
 import lk.chamasha.test.cases.repository.CourseRepository;
 import lk.chamasha.test.cases.repository.StudentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 public class StudentServiceImplSpringIntegrationTest {
-
     @Autowired
     private StudentServiceImpl studentService;
 
     @Autowired
-    private CourseRepository courseRepository;
-
-    @Autowired
     private StudentRepository studentRepository;
 
-    private Course savedCourse;
+    @Autowired
+    private CourseRepository courseRepository;
+
+    private Course course;
 
     @BeforeEach
-    public void setup() {
-        // Course එකක් create කරමු tests වලට
-        Course course = new Course();
-        course.setCourseName("Maths");
-        savedCourse = courseRepository.save(course);
+    void setUp() {
+        studentRepository.deleteAll();
+        courseRepository.deleteAll();
+
+        course = new Course();
+        course.setCourseName("Software Engineering");
+        course = courseRepository.save(course);
     }
 
+    // ===== CREATE =====
+
     @Test
-    public void testCreateStudentSuccess() {
+    void testCreateStudent_Success() {
         StudentRequest request = new StudentRequest();
         request.setStudentName("Chamasha");
-        request.setCourseId(savedCourse.getId());
+        request.setCourseId(course.getId());
 
-        StudentResponse response = studentService.createStudent(request);
+        StudentResponse response = studentService.create(request);
 
         assertNotNull(response);
         assertEquals("Chamasha", response.getStudentName());
-        assertEquals(savedCourse.getCourseName(), response.getCourseName());
-
+        assertEquals("Software Engineering", response.getCourseName());
         assertTrue(studentRepository.existsById(response.getId()));
     }
 
     @Test
-    public void testCreateStudentCourseNotFound() {
+    void testCreateStudent_CourseNotFound() {
         StudentRequest request = new StudentRequest();
-        request.setStudentName("Nethmi");
-        request.setCourseId(999L);  // නොමැති course id එකක්
+        request.setStudentName("Kasun");
+        request.setCourseId(9999L); // Invalid course ID
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            studentService.createStudent(request);
-        });
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> studentService.create(request));
+        assertEquals("Course not found with id: 9999", thrown.getMessage());
+    }
 
-        assertTrue(exception.getMessage().contains("Course not found"));
+    // ===== GET ALL =====
+
+    @Test
+    void testGetAllStudents_ReturnsList() {
+        Student s1 = new Student();
+        s1.setStudentName("Nimal");
+        s1.setCourse(course);
+
+        Student s2 = new Student();
+        s2.setStudentName("Sunil");
+        s2.setCourse(course);
+
+        studentRepository.saveAll(Arrays.asList(s1, s2));
+
+        List<StudentResponse> students = studentService.getAll();
+
+        assertEquals(2, students.size());
+        assertEquals("Nimal", students.get(0).getStudentName());
+        assertEquals("Sunil", students.get(1).getStudentName());
     }
 
     @Test
-    public void testGetAllStudents() {
-        // Create 2 students
-        StudentRequest req1 = new StudentRequest();
-        req1.setStudentName("Dilshan");
-        req1.setCourseId(savedCourse.getId());
-        studentService.createStudent(req1);
+    void testGetAllStudents_ReturnsEmptyList() {
+        List<StudentResponse> students = studentService.getAll();
+        assertTrue(students.isEmpty());
+    }
 
-        StudentRequest req2 = new StudentRequest();
-        req2.setStudentName("Kasun");
-        req2.setCourseId(savedCourse.getId());
-        studentService.createStudent(req2);
+    // ===== GET BY ID =====
 
-        List<StudentResponse> students = studentService.getAllStudents();
+    @Test
+    void testGetById_Success() {
+        Student student = new Student();
+        student.setStudentName("Amal");
+        student.setCourse(course);
+        student = studentRepository.save(student);
 
-        assertNotNull(students);
-        assertTrue(students.size() >= 2);
+        StudentResponse response = studentService.getById(student.getId());
+
+        assertNotNull(response);
+        assertEquals("Amal", response.getStudentName());
+        assertEquals("Software Engineering", response.getCourseName());
     }
 
     @Test
-    public void testGetStudentByIdSuccess() {
-        StudentRequest request = new StudentRequest();
-        request.setStudentName("Roshan");
-        request.setCourseId(savedCourse.getId());
-        StudentResponse created = studentService.createStudent(request);
+    void testGetById_NotFound() {
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> studentService.getById(8888L));
+        assertEquals("Student not found with id: 8888", thrown.getMessage());
+    }
 
-        StudentResponse fetched = studentService.getStudentById(created.getId());
+    // ===== DELETE =====
 
-        assertNotNull(fetched);
-        assertEquals(created.getStudentName(), fetched.getStudentName());
-        assertEquals(created.getCourseName(), fetched.getCourseName());
+    @Test
+    void testDeleteStudent_Success() {
+        // Arrange: Save a student with a course
+        Course savedCourse = new Course();
+        savedCourse.setCourseName("Computer Science");
+        savedCourse = courseRepository.save(savedCourse);
+
+        Student student = new Student();
+        student.setStudentName("Kamal");
+        student.setCourse(savedCourse);
+        student = studentRepository.save(student);
+
+        Long studentId = student.getId();
+
+        // Act & Assert
+        assertDoesNotThrow(() -> studentService.delete(studentId));
+        assertFalse(studentRepository.existsById(studentId));
     }
 
     @Test
-    public void testGetStudentByIdNotFound() {
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            studentService.getStudentById(999L);
-        });
-
-        assertTrue(exception.getMessage().contains("Student not found"));
-    }
-
-    @Test
-    public void testDeleteStudentSuccess() {
-        StudentRequest request = new StudentRequest();
-        request.setStudentName("Saman");
-        request.setCourseId(savedCourse.getId());
-        StudentResponse created = studentService.createStudent(request);
-
-        assertTrue(studentRepository.existsById(created.getId()));
-
-        studentService.deleteStudent(created.getId());
-
-        assertFalse(studentRepository.existsById(created.getId()));
-    }
-
-    @Test
-    public void testDeleteStudentNotFound() {
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            studentService.deleteStudent(999L);
-        });
-
-        assertTrue(exception.getMessage().contains("Student not found"));
+    void testDeleteStudent_NotFound() {
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> studentService.delete(7777L));
+        assertEquals("Student not found with id: 7777", thrown.getMessage());
     }
 }

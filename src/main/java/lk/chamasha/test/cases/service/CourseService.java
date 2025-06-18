@@ -10,11 +10,11 @@ import java.util.List;
 
 public interface CourseService {
 
-    CourseResponse createCourse(CourseRequest request)throws CourseNotCreatedException;
+    CourseResponse create(CourseRequest request)throws CourseNotCreatedException;
 
-    List<CourseResponse> getAllCourses();
+    List<CourseResponse> getAll();
 
-    CourseResponse getCourseById(Long id)throws CourseNotFoundException;
+    CourseResponse getById(Long id)throws CourseNotFoundException;
 
-    void deleteCourse(Long id)throws CourseNotFoundException;
+    void delete(Long id)throws CourseNotFoundException;
 }

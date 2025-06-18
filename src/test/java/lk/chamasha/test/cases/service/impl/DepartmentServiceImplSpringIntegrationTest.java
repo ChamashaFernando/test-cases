@@ -1,6 +1,9 @@
 package lk.chamasha.test.cases.service.impl;
 
+import jakarta.transaction.Transactional;
 import lk.chamasha.test.cases.controller.request.DepartmentRequest;
+import lk.chamasha.test.cases.controller.response.DepartmentResponse;
+import lk.chamasha.test.cases.exception.DepartmentNotCreatedException;
 import lk.chamasha.test.cases.exception.DepartmentNotFoundException;
 import lk.chamasha.test.cases.model.Department;
 import lk.chamasha.test.cases.repository.DepartmentRepository;
@@ -9,14 +12,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")  // ensure test profile or in-memory db
-class DepartmentServiceImplSpringIntegrationTest {
 
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+class DepartmentServiceImplSpringIntegrationTest {
     @Autowired
     private DepartmentServiceImpl departmentService;
 
@@ -25,68 +30,95 @@ class DepartmentServiceImplSpringIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        departmentRepository.deleteAll();  // clear db before each test
+        departmentRepository.deleteAll();
     }
 
+    // ===== CREATE =====
+
     @Test
-    @DisplayName("Test creating a department")
-    void testCreateDepartment() {
-        DepartmentRequest request = new DepartmentRequest();
+    void testCreateDepartment_Success() throws Exception {
+        final DepartmentRequest request = new DepartmentRequest();
         request.setDepartmentName("Engineering");
 
-        var response = departmentService.createDepartment(request);
+        DepartmentResponse response = departmentService.create(request);
 
         assertNotNull(response);
-        assertNotNull(response.getId());
         assertEquals("Engineering", response.getDepartmentName());
+        assertTrue(departmentRepository.existsById(response.getId()));
     }
 
     @Test
-    @DisplayName("Test retrieving department by ID")
-    void testGetDepartmentById() throws DepartmentNotFoundException {
-        DepartmentRequest request = new DepartmentRequest();
-        request.setDepartmentName("Science");
+    void testCreateDepartment_AlreadyExists() {
+        Department dept = new Department();
+        dept.setDepartmentName("Business");
+        departmentRepository.save(dept);
 
-        var created = departmentService.createDepartment(request);
-        var response = departmentService.getDepartmentById(created.getId());
+        final DepartmentRequest request = new DepartmentRequest();
+        request.setDepartmentName("Business");
+
+        assertThrows(DepartmentNotCreatedException.class, () -> departmentService.create(request));
+    }
+
+    // ===== GET ALL =====
+
+    @Test
+    void testGetAllDepartments() {
+        Department dept1 = new Department();
+        dept1.setDepartmentName("Science");
+
+        Department dept2 = new Department();
+        dept2.setDepartmentName("Arts");
+
+        departmentRepository.saveAll(Arrays.asList(dept1, dept2));
+
+        List<DepartmentResponse> list = departmentService.getAll();
+
+        assertEquals(2, list.size());
+    }
+
+    @Test
+    void testGetAllDepartments_Empty() {
+        List<DepartmentResponse> list = departmentService.getAll();
+        assertTrue(list.isEmpty());
+    }
+
+    // ===== GET BY ID =====
+
+    @Test
+    void testGetById_Success() throws Exception {
+        Department dept = new Department();
+        dept.setDepartmentName("Math");
+        dept = departmentRepository.save(dept);
+
+        DepartmentResponse response = departmentService.getById(dept.getId());
 
         assertNotNull(response);
-        assertEquals("Science", response.getDepartmentName());
+        assertEquals("Math", response.getDepartmentName());
     }
 
     @Test
-    @DisplayName("Test retrieving department by invalid ID")
-    void testGetDepartmentByInvalidId() {
-        Long invalidId = 999L;
-        assertThrows(DepartmentNotFoundException.class, () -> departmentService.getDepartmentById(invalidId));
+    void testGetById_NotFound() {
+        assertThrows(DepartmentNotFoundException.class, () -> departmentService.getById(1234L));
+    }
+
+    // ===== DELETE =====
+
+    @Test
+    void testDeleteDepartment_Success() throws Exception {
+        // Arrange: Create and save a Department
+        Department department = new Department();
+        department.setDepartmentName("Physics");
+        department = departmentRepository.save(department);
+
+        final Long departmentId = department.getId();
+
+        // Act & Assert: Call the service method and verify deletion
+        assertDoesNotThrow(() -> departmentService.delete(departmentId));
+        assertFalse(departmentRepository.existsById(departmentId));
     }
 
     @Test
-    @DisplayName("Test getting all departments")
-    void testGetAllDepartments() {
-        departmentService.createDepartment(new DepartmentRequest("IT"));
-        departmentService.createDepartment(new DepartmentRequest("HR"));
-
-        List<?> departments = departmentService.getAllDepartments();
-
-        assertEquals(2, departments.size());
-    }
-
-    @Test
-    @DisplayName("Test deleting a department")
-    void testDeleteDepartment() throws DepartmentNotFoundException {
-        var request = new DepartmentRequest("Marketing");
-        var response = departmentService.createDepartment(request);
-
-        departmentService.deleteDepartment(response.getId());
-
-        assertThrows(DepartmentNotFoundException.class, () -> departmentService.getDepartmentById(response.getId()));
-    }
-
-    @Test
-    @DisplayName("Test deleting with invalid department ID")
-    void testDeleteDepartmentInvalidId() {
-        Long invalidId = 888L;
-        assertThrows(DepartmentNotFoundException.class, () -> departmentService.deleteDepartment(invalidId));
+    void testDelete_NotFound() {
+        assertThrows(DepartmentNotFoundException.class, () -> departmentService.delete(9999L));
     }
 }

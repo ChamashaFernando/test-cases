@@ -9,11 +9,11 @@ import java.util.List;
 
 public interface StudentService {
 
-    StudentResponse createStudent(StudentRequest request);
+    StudentResponse create(StudentRequest request);
 
-    List<StudentResponse> getAllStudents();
+    List<StudentResponse> getAll();
 
-    StudentResponse getStudentById(Long id);
+    StudentResponse getById(Long id);
 
-    void deleteStudent(Long id);
+    void delete(Long id);
 }

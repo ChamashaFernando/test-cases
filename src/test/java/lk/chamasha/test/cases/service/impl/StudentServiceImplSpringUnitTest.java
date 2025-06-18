@@ -12,14 +12,21 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@SpringBootTest
 class StudentServiceImplSpringUnitTest {
+
+    @InjectMocks
+    private StudentServiceImpl studentService;
 
     @Mock
     private StudentRepository studentRepository;
@@ -27,148 +34,143 @@ class StudentServiceImplSpringUnitTest {
     @Mock
     private CourseRepository courseRepository;
 
-    @InjectMocks
-    private StudentServiceImpl studentService;
+    private Course course;
+    private Student student;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        course = new Course();
+        course.setId(1L);
+        course.setCourseName("Computer Science");
+
+        student = new Student();
+        student.setId(1L);
+        student.setStudentName("Chamasha");
+        student.setCourse(course);
     }
 
     @Test
-    @DisplayName("Create student successfully")
-    void testCreateStudentSuccess() {
+    void createStudent_Success() {
         StudentRequest request = new StudentRequest();
         request.setStudentName("Chamasha");
         request.setCourseId(1L);
 
-        Course course = new Course();
-        course.setId(1L);
-        course.setCourseName("Computer Science");
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
 
         Student savedStudent = new Student();
         savedStudent.setId(1L);
         savedStudent.setStudentName("Chamasha");
         savedStudent.setCourse(course);
 
-        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
         when(studentRepository.save(any(Student.class))).thenReturn(savedStudent);
 
-        StudentResponse response = studentService.createStudent(request);
+        StudentResponse response = studentService.create(request);
 
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Chamasha", response.getStudentName());
         assertEquals("Computer Science", response.getCourseName());
 
-        verify(courseRepository).findById(1L);
-        verify(studentRepository).save(any(Student.class));
+        verify(courseRepository, times(1)).findById(1L);
+        verify(studentRepository, times(1)).save(any(Student.class));
     }
 
     @Test
-    @DisplayName("Create student fails when course not found")
-    void testCreateStudentCourseNotFound() {
+    void createStudent_CourseNotFound() {
         StudentRequest request = new StudentRequest();
         request.setStudentName("Chamasha");
         request.setCourseId(99L);
 
         when(courseRepository.findById(99L)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> studentService.createStudent(request));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> studentService.create(request));
+        assertEquals("Course not found with id: 99", ex.getMessage());
 
-        assertEquals("Course not found with id: 99", exception.getMessage());
-
-        verify(courseRepository).findById(99L);
+        verify(courseRepository, times(1)).findById(99L);
         verify(studentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Get all students successfully")
-    void testGetAllStudents() {
-        Course course = new Course();
-        course.setCourseName("Maths");
-
+    void getAllStudents_ReturnsList() {
         Student student1 = new Student();
         student1.setId(1L);
-        student1.setStudentName("Nimal");
+        student1.setStudentName("Alice");
         student1.setCourse(course);
 
         Student student2 = new Student();
         student2.setId(2L);
-        student2.setStudentName("Kamal");
-        student2.setCourse(course);
+        student2.setStudentName("Bob");
+        student2.setCourse(null);
 
-        when(studentRepository.findAll()).thenReturn(List.of(student1, student2));
+        when(studentRepository.findAll()).thenReturn(Arrays.asList(student1, student2));
 
-        List<StudentResponse> responses = studentService.getAllStudents();
+        List<StudentResponse> responseList = studentService.getAll();
 
-        assertEquals(2, responses.size());
-        assertTrue(responses.stream().anyMatch(s -> s.getStudentName().equals("Nimal")));
-        assertTrue(responses.stream().anyMatch(s -> s.getStudentName().equals("Kamal")));
+        assertEquals(2, responseList.size());
 
-        verify(studentRepository).findAll();
+        assertEquals("Alice", responseList.get(0).getStudentName());
+        assertEquals("Computer Science", responseList.get(0).getCourseName());
+
+        assertEquals("Bob", responseList.get(1).getStudentName());
+        assertNull(responseList.get(1).getCourseName());
+
+        verify(studentRepository, times(1)).findAll();
     }
 
     @Test
-    @DisplayName("Get student by id successfully")
-    void testGetStudentByIdSuccess() {
-        Course course = new Course();
-        course.setCourseName("Physics");
+    void getAllStudents_ReturnsEmptyList() {
+        when(studentRepository.findAll()).thenReturn(Collections.emptyList());
 
-        Student student = new Student();
-        student.setId(5L);
-        student.setStudentName("Saman");
-        student.setCourse(course);
+        List<StudentResponse> responseList = studentService.getAll();
 
-        when(studentRepository.findById(5L)).thenReturn(Optional.of(student));
+        assertTrue(responseList.isEmpty());
+        verify(studentRepository, times(1)).findAll();
+    }
 
-        StudentResponse response = studentService.getStudentById(5L);
+    @Test
+    void getById_Success() {
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(student));
+
+        StudentResponse response = studentService.getById(1L);
 
         assertNotNull(response);
-        assertEquals(5L, response.getId());
-        assertEquals("Saman", response.getStudentName());
-        assertEquals("Physics", response.getCourseName());
+        assertEquals(1L, response.getId());
+        assertEquals("Chamasha", response.getStudentName());
+        assertEquals("Computer Science", response.getCourseName());
 
-        verify(studentRepository).findById(5L);
+        verify(studentRepository, times(1)).findById(1L);
     }
 
     @Test
-    @DisplayName("Get student by id throws exception when not found")
-    void testGetStudentByIdNotFound() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.empty());
+    void getById_NotFound() {
+        when(studentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> studentService.getStudentById(100L));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> studentService.getById(99L));
 
-        assertEquals("Student not found with id: 100", exception.getMessage());
-
-        verify(studentRepository).findById(100L);
+        assertEquals("Student not found with id: 99", ex.getMessage());
+        verify(studentRepository, times(1)).findById(99L);
     }
 
     @Test
-    @DisplayName("Delete student successfully")
-    void testDeleteStudentSuccess() {
+    void deleteStudent_Success() {
         when(studentRepository.existsById(1L)).thenReturn(true);
         doNothing().when(studentRepository).deleteById(1L);
 
-        assertDoesNotThrow(() -> studentService.deleteStudent(1L));
+        assertDoesNotThrow(() -> studentService.delete(1L));
 
-        verify(studentRepository).existsById(1L);
-        verify(studentRepository).deleteById(1L);
+        verify(studentRepository, times(1)).existsById(1L);
+        verify(studentRepository, times(1)).deleteById(1L);
     }
 
     @Test
-    @DisplayName("Delete student throws exception when not found")
-    void testDeleteStudentNotFound() {
-        when(studentRepository.existsById(999L)).thenReturn(false);
+    void deleteStudent_NotFound() {
+        when(studentRepository.existsById(88L)).thenReturn(false);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> studentService.deleteStudent(999L));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> studentService.delete(88L));
 
-        assertEquals("Student not found with id: 999", exception.getMessage());
+        assertEquals("Student not found with id: 88", ex.getMessage());
 
-        verify(studentRepository).existsById(999L);
-        verify(studentRepository, never()).deleteById(any());
+        verify(studentRepository, times(1)).existsById(88L);
+        verify(studentRepository, never()).deleteById(anyLong());
     }
 }

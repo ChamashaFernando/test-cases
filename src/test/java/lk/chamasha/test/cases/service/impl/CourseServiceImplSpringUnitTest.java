@@ -9,20 +9,25 @@ import lk.chamasha.test.cases.model.Department;
 import lk.chamasha.test.cases.repository.CourseRepository;
 import lk.chamasha.test.cases.repository.DepartmentRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
+@SpringBootTest
 class CourseServiceImplSpringUnitTest {
+
+    @InjectMocks
+    private CourseServiceImpl courseService;
 
     @Mock
     private CourseRepository courseRepository;
@@ -30,142 +35,162 @@ class CourseServiceImplSpringUnitTest {
     @Mock
     private DepartmentRepository departmentRepository;
 
-    @InjectMocks
-    private CourseServiceImpl courseService;
+    private Department department;
 
     @BeforeEach
-    void setup() {
-        MockitoAnnotations.openMocks(this);
+    void setUp() {
+        department = new Department();
+        department.setId(1L);
+        department.setDepartmentName("IT");
     }
 
+    // ===== create() tests =====
+
     @Test
-    @DisplayName("Create course successfully")
-    void testCreateCourseSuccess() throws CourseNotCreatedException {
-        Department dept = new Department();
-        dept.setId(1L);
-        dept.setDepartmentName("Engineering");
-
+    void createCourse_Success() throws CourseNotCreatedException {
         CourseRequest request = new CourseRequest();
-        request.setCourseName("Computer Science");
-        request.setDepartmentId(1L);
+        request.setCourseName("Data Structures");
+        request.setDepartmentId(department.getId());
 
-        when(departmentRepository.findById(1L)).thenReturn(Optional.of(dept));
+        Mockito.when(departmentRepository.findById(department.getId())).thenReturn(Optional.of(department));
 
         Course savedCourse = new Course();
         savedCourse.setId(10L);
-        savedCourse.setCourseName("Computer Science");
-        savedCourse.setDepartment(dept);
+        savedCourse.setCourseName(request.getCourseName());
+        savedCourse.setDepartment(department);
 
-        when(courseRepository.save(any(Course.class))).thenReturn(savedCourse);
+        Mockito.when(courseRepository.save(Mockito.any(Course.class))).thenReturn(savedCourse);
 
-        CourseResponse response = courseService.createCourse(request);
+        CourseResponse response = courseService.create(request);
 
         assertNotNull(response);
-        assertEquals(10L, response.getId());
-        assertEquals("Computer Science", response.getCourseName());
-        assertEquals("Engineering", response.getDepartmentName());
+        assertEquals(savedCourse.getId(), response.getId());
+        assertEquals("Data Structures", response.getCourseName());
+        assertEquals("IT", response.getDepartmentName());
 
-        verify(departmentRepository).findById(1L);
-        verify(courseRepository).save(any(Course.class));
+        Mockito.verify(departmentRepository, Mockito.times(1)).findById(department.getId());
+        Mockito.verify(courseRepository, Mockito.times(1)).save(Mockito.any(Course.class));
     }
 
     @Test
-    @DisplayName("Create course throws exception when department not found")
-    void testCreateCourseDepartmentNotFound() {
+    void createCourse_DepartmentNotFound() {
+        Long invalidDeptId = 99L;
+
         CourseRequest request = new CourseRequest();
-        request.setCourseName("Math");
-        request.setDepartmentId(99L);
+        request.setCourseName("Algorithms");
+        request.setDepartmentId(invalidDeptId);
 
-        when(departmentRepository.findById(99L)).thenReturn(Optional.empty());
+        Mockito.when(departmentRepository.findById(invalidDeptId)).thenReturn(Optional.empty());
 
-        assertThrows(CourseNotCreatedException.class, () -> courseService.createCourse(request));
+        CourseNotCreatedException thrown = assertThrows(CourseNotCreatedException.class, () -> {
+            courseService.create(request);
+        });
 
-        verify(departmentRepository).findById(99L);
-        verify(courseRepository, never()).save(any());
+        assertEquals("Department not found with id: " + invalidDeptId, thrown.getMessage());
+        Mockito.verify(departmentRepository, Mockito.times(1)).findById(invalidDeptId);
+        Mockito.verify(courseRepository, Mockito.never()).save(Mockito.any());
+    }
+
+    // ===== getAll() tests =====
+
+    @Test
+    void getAllCourses_ReturnsList() {
+        Course c1 = new Course();
+        c1.setId(1L);
+        c1.setCourseName("OOP");
+        c1.setDepartment(department);
+
+        Course c2 = new Course();
+        c2.setId(2L);
+        c2.setCourseName("DBMS");
+        c2.setDepartment(department);
+
+        Mockito.when(courseRepository.findAll()).thenReturn(Arrays.asList(c1, c2));
+
+        List<CourseResponse> result = courseService.getAll();
+
+        assertEquals(2, result.size());
+        assertEquals("OOP", result.get(0).getCourseName());
+        assertEquals("DBMS", result.get(1).getCourseName());
+
+        Mockito.verify(courseRepository, Mockito.times(1)).findAll();
     }
 
     @Test
-    @DisplayName("Get course by id successfully")
-    void testGetCourseByIdSuccess() throws CourseNotFoundException {
-        Department dept = new Department();
-        dept.setDepartmentName("Science");
+    void getAllCourses_ReturnsEmptyList() {
+        Mockito.when(courseRepository.findAll()).thenReturn(Arrays.asList());
+
+        List<CourseResponse> result = courseService.getAll();
+
+        assertTrue(result.isEmpty());
+
+        Mockito.verify(courseRepository, Mockito.times(1)).findAll();
+    }
+
+    // ===== getById() tests =====
+
+    @Test
+    void getById_Success() throws CourseNotFoundException {
+        Long courseId = 1L;
 
         Course course = new Course();
-        course.setId(5L);
-        course.setCourseName("Physics");
-        course.setDepartment(dept);
+        course.setId(courseId);
+        course.setCourseName("Networking");
+        course.setDepartment(department);
 
-        when(courseRepository.findById(5L)).thenReturn(Optional.of(course));
+        Mockito.when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
-        CourseResponse response = courseService.getCourseById(5L);
+        CourseResponse response = courseService.getById(courseId);
 
         assertNotNull(response);
-        assertEquals(5L, response.getId());
-        assertEquals("Physics", response.getCourseName());
-        assertEquals("Science", response.getDepartmentName());
+        assertEquals(courseId, response.getId());
+        assertEquals("Networking", response.getCourseName());
+        assertEquals("IT", response.getDepartmentName());
 
-        verify(courseRepository).findById(5L);
+        Mockito.verify(courseRepository, Mockito.times(1)).findById(courseId);
     }
 
     @Test
-    @DisplayName("Get course by id throws exception when not found")
-    void testGetCourseByIdNotFound() {
-        when(courseRepository.findById(100L)).thenReturn(Optional.empty());
+    void getById_NotFound() {
+        Long invalidId = 99L;
 
-        assertThrows(CourseNotFoundException.class, () -> courseService.getCourseById(100L));
+        Mockito.when(courseRepository.findById(invalidId)).thenReturn(Optional.empty());
 
-        verify(courseRepository).findById(100L);
+        CourseNotFoundException thrown = assertThrows(CourseNotFoundException.class, () -> {
+            courseService.getById(invalidId);
+        });
+
+        assertEquals("Course not found with id: " + invalidId, thrown.getMessage());
+        Mockito.verify(courseRepository, Mockito.times(1)).findById(invalidId);
+    }
+
+    // ===== delete() tests =====
+
+    @Test
+    void delete_Success() throws Exception {
+        Long courseId = 1L;
+
+        Mockito.when(courseRepository.existsById(courseId)).thenReturn(true);
+        Mockito.doNothing().when(courseRepository).deleteById(courseId);
+
+        assertDoesNotThrow(() -> courseService.delete(courseId));
+
+        Mockito.verify(courseRepository, Mockito.times(1)).existsById(courseId);
+        Mockito.verify(courseRepository, Mockito.times(1)).deleteById(courseId);
     }
 
     @Test
-    @DisplayName("Delete course successfully")
-    void testDeleteCourseSuccess() throws CourseNotFoundException {
-        when(courseRepository.existsById(1L)).thenReturn(true);
-        doNothing().when(courseRepository).deleteById(1L);
+    void delete_NotFound() {
+        Long invalidId = 99L;
 
-        assertDoesNotThrow(() -> courseService.deleteCourse(1L));
+        Mockito.when(courseRepository.existsById(invalidId)).thenReturn(false);
 
-        verify(courseRepository).existsById(1L);
-        verify(courseRepository).deleteById(1L);
-    }
+        CourseNotFoundException thrown = assertThrows(CourseNotFoundException.class, () -> {
+            courseService.delete(invalidId);
+        });
 
-    @Test
-    @DisplayName("Delete course throws exception when not found")
-    void testDeleteCourseNotFound() {
-        when(courseRepository.existsById(2L)).thenReturn(false);
-
-        assertThrows(CourseNotFoundException.class, () -> courseService.deleteCourse(2L));
-
-        verify(courseRepository).existsById(2L);
-        verify(courseRepository, never()).deleteById(any());
-    }
-
-    @Test
-    @DisplayName("Get all courses")
-    void testGetAllCourses() {
-        Department dept1 = new Department();
-        dept1.setDepartmentName("Science");
-        Department dept2 = new Department();
-        dept2.setDepartmentName("Arts");
-
-        Course course1 = new Course();
-        course1.setId(1L);
-        course1.setCourseName("Physics");
-        course1.setDepartment(dept1);
-
-        Course course2 = new Course();
-        course2.setId(2L);
-        course2.setCourseName("History");
-        course2.setDepartment(dept2);
-
-        when(courseRepository.findAll()).thenReturn(List.of(course1, course2));
-
-        List<CourseResponse> responses = courseService.getAllCourses();
-
-        assertEquals(2, responses.size());
-        assertTrue(responses.stream().anyMatch(r -> r.getCourseName().equals("Physics") && r.getDepartmentName().equals("Science")));
-        assertTrue(responses.stream().anyMatch(r -> r.getCourseName().equals("History") && r.getDepartmentName().equals("Arts")));
-
-        verify(courseRepository).findAll();
+        assertEquals("Course not found with id: " + invalidId, thrown.getMessage());
+        Mockito.verify(courseRepository, Mockito.times(1)).existsById(invalidId);
+        Mockito.verify(courseRepository, Mockito.never()).deleteById(Mockito.anyLong());
     }
 }

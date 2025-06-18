@@ -25,7 +25,7 @@ public class CourseServiceImpl implements CourseService {
     private final DepartmentRepository departmentRepository;
 
     @Override
-    public CourseResponse createCourse(CourseRequest request) throws CourseNotCreatedException {
+    public CourseResponse create(CourseRequest request) throws CourseNotCreatedException {
         Department dept = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new CourseNotCreatedException("Department not found with id: " + request.getDepartmentId()));
 
@@ -39,21 +39,21 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public List<CourseResponse> getAllCourses() {
+    public List<CourseResponse> getAll() {
         return courseRepository.findAll().stream()
                 .map(c -> new CourseResponse(c.getId(), c.getCourseName(), c.getDepartment().getDepartmentName()))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public CourseResponse getCourseById(Long id) throws CourseNotFoundException {
+    public CourseResponse getById(Long id) throws CourseNotFoundException {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + id));
         return new CourseResponse(course.getId(), course.getCourseName(), course.getDepartment().getDepartmentName());
     }
 
     @Override
-    public void deleteCourse(Long id) throws CourseNotFoundException {
+    public void delete(Long id) throws CourseNotFoundException {
         if (!courseRepository.existsById(id)) {
             throw new CourseNotFoundException("Course not found with id: " + id);
         }

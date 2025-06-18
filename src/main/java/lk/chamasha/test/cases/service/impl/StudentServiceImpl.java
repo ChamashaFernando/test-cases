@@ -16,13 +16,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+
 public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepository;
     private final CourseRepository courseRepository;
 
     @Override
-    public StudentResponse createStudent(StudentRequest request) {
+    public StudentResponse create(StudentRequest request) {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + request.getCourseId()));
 
@@ -37,7 +38,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Transactional
     @Override
-    public List<StudentResponse> getAllStudents() {
+    public List<StudentResponse> getAll() {
         return studentRepository.findAll().stream()
                 .map(s -> new StudentResponse(s.getId(), s.getStudentName(),
                         s.getCourse() != null ? s.getCourse().getCourseName() : null))
@@ -45,7 +46,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public StudentResponse getStudentById(Long id) {
+    public StudentResponse getById(Long id) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + id));
         return new StudentResponse(student.getId(), student.getStudentName(),
@@ -53,7 +54,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public void deleteStudent(Long id) {
+    public void delete(Long id) {
         if (!studentRepository.existsById(id)) {
             throw new RuntimeException("Student not found with id: " + id);
         }
